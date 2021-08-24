@@ -21,9 +21,10 @@ import os
 import webbrowser # for showing folium maps easily
 import folium
 import gpxpy
+from folium import plugins
 
 # set cwd. having weird issues with conda this should fix
-os.chdir('/home/sophie/GitHub/uninotes_2021/sem2/gisci399/code/')
+os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
 from custom_scalebar import scale_bar
 
 # constants
@@ -37,7 +38,6 @@ HOVER = True
 LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
 ZOOM_START = 12
-
 
 # get files with extension in a folder
 def get_files(folder, extension):
@@ -151,14 +151,28 @@ if os.path.exists(FOLDER):
             
             # choose between hover or click for item. click is better for html
             if not HOVER:
+
                 folium.PolyLine(points, color=COLOURS[files.index(file)], 
                                 weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
                                 popup=popup).add_to(folium_map)
+        
+
             if HOVER:
+                '''
                   folium.PolyLine(points, color=COLOURS[files.index(file)], 
                                 weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
                                 tooltip=folium.Html(popup_string, 
                                     script=True).render()).add_to(folium_map)
+                  '''
+                path = folium.plugins.AntPath(points, delay=3000, weight=LINE_WEIGHT,
+                    dashArray=(10, 200),
+                    color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
+                    tooltip=folium.Html(popup_string, script=True).render()
+                    ).add_to(folium_map)
+                
+                path.options.update(dashArray=[1, 12],
+                                    hardwareAcceleration=True,
+                                    pulseColor='#3f4145')
             
         folium_map.save('index.html')
     
