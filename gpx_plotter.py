@@ -38,6 +38,8 @@ HOVER = True
 LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
 ZOOM_START = 12
+TITLE = 'Cycling Routes for Pollutant Exposure Study'
+SUBTITLE = 'Created by Sophie Kolston for GISCI 399'
 
 # get files with extension in a folder
 def get_files(folder, extension):
@@ -116,6 +118,19 @@ def get_static_map():
     return fig, ax
 
 
+# checks for autographer gif
+def get_autograph(file_location):
+    name = os.path.basename(file_location).split('.')[0]
+    
+    image_path = 'data/autographer/{}.gif'.format(name)
+    
+    if os.path.isfile(image_path):
+        return '<img src="{}"/>'.format(image_path)
+
+    else:
+        return 'No Autograph found'
+
+
 # run if folder exists
 if os.path.exists(FOLDER):
     files = get_files(FOLDER, 'gpx')
@@ -134,17 +149,26 @@ if os.path.exists(FOLDER):
     elif MAP_TYPE == 'dynamic':
         folium_map = folium.Map(location=CENTRE, zoom_start=ZOOM_START, 
                                 tiles='Stamen Terrain', control_scale=True)
+        
+        title = ('<h3 align="center" style="font-size:20px"><b>{}</b></h3>'
+                 '<h2 align="center" style="font-size:12px">{}</h2>'
+                    ).format(TITLE, SUBTITLE)
+    
+        folium_map.get_root().html.add_child(folium.Element(title))
 
         for file in files:
             data = get_polyline(file)
             
             points = data['points']
-       
+            
+            image = get_autograph(file)
+            
             popup_string = ('<b>{}</b><br><br><b>Date:</b> {}<br><b>Start '
                             'time:</b> {}<br><b>End time:</b> {}<br><b>'
                             'Ride length:</b> {}<br><b>Total points:</b> {}'
+                            '<br>{}'
                 .format(os.path.basename(file), data['date'], data['start'], 
-                        data['end'], data['length'], data['point n']))
+                        data['end'], data['length'], data['point n'], image))
             
             popup_iframe = folium.IFrame(popup_string, width=400, height=150)
             popup = folium.Popup(popup_iframe)
