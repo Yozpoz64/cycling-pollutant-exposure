@@ -6,6 +6,8 @@ NOTES:
     -get video from autographer photos using command: ffmpeg -framerate 10 -pattern_type glob -i '*.JPG' video.mp4
     -convert this video to .gif using: ffmpeg -i video.mp4 -vf "fps=15,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 output.gif
 
+TO DO:
+    -write code to automate autographer extraction
 '''
 # need quite a few for static cartography, as well as local secondary methods
 import matplotlib.pyplot as plt
