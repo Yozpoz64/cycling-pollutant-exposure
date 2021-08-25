@@ -22,13 +22,14 @@ import webbrowser # for showing folium maps easily
 import folium
 import gpxpy
 from folium import plugins
+from folium.features import DivIcon
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
 from custom_scalebar import scale_bar
 
 # constants
-CENTRE = (-36.85, 174.75)
+CENTRE = (-36.88, 174.75)
 EXTENT = [-185.363388, -185.103836, -36.996520, -36.819180] # http://bboxfinder.com/
 CRS = ccrs.PlateCarree()
 FOLDER = 'data/gpxs/'
@@ -39,7 +40,9 @@ LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
 ZOOM_START = 12
 TITLE = 'Cycling Routes for Pollutant Exposure Study'
-SUBTITLE = 'Created by Sophie Kolston for GISCI 399'
+SUBTITLE = 'Created by Sophie Kolston for GISCI 399. Data and code can be found on'
+REPO_LINK = 'https://github.com/Yozpoz64/cycling-pollutant-exposure'
+
 
 # get files with extension in a folder
 def get_files(folder, extension):
@@ -148,14 +151,28 @@ if os.path.exists(FOLDER):
     # makes folium map
     elif MAP_TYPE == 'dynamic':
         folium_map = folium.Map(location=CENTRE, zoom_start=ZOOM_START, 
-                                tiles='Stamen Terrain', control_scale=True)
+                                tiles='Stamen Terrain', control_scale=True,
+                                height='85%')
         
+        # create title and add to map
         title = ('<h3 align="center" style="font-size:20px"><b>{}</b></h3>'
-                 '<h2 align="center" style="font-size:12px">{}</h2>'
-                    ).format(TITLE, SUBTITLE)
-    
+                 '<h2 align="center" style="font-size:12px">{} <a href="{}">'
+                 'GitHub</a></h2>'
+                    ).format(TITLE, SUBTITLE, REPO_LINK)
         folium_map.get_root().html.add_child(folium.Element(title))
-
+    
+        # add full screen button
+        folium.plugins.Fullscreen(position='topleft').add_to(folium_map)
+        
+        # add mouse position
+        folium.plugins.MousePosition(position='topright').add_to(folium_map)
+        
+        # add measure tool
+        folium.plugins.MeasureControl(primary_length_unit='meters',
+            secondary_length_unit='kilometers', primary_area_unit='sqmeters',
+            secondary_area_unit ='sqkilometers').add_to(folium_map)
+        
+    
         for file in files:
             data = get_polyline(file)
             
