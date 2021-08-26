@@ -16,7 +16,6 @@ import glob
 from shapely.geometry import shape
 import cartopy.crs as ccrs
 import cartopy.io.img_tiles as cimgt
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 import os
 
 # folium
@@ -34,11 +33,11 @@ from custom_scalebar import scale_bar
 
 # constants
 CENTRE = (-36.88, 174.75)
-EXTENT = [-185.363388, -185.103836, -36.996520, -36.819180] # http://bboxfinder.com/
+EXTENT = [-185.36, -185.10, -36.99, -36.82] # http://bboxfinder.com/
 CRS = ccrs.PlateCarree()
 FOLDER = 'data/gpxs/'
 COLOURS = ['red', 'blue', 'green', 'pink', 'orange']
-MAP_TYPE = 'dynamic'
+MAP_TYPE = 'static' # static or dynamic
 HOVER = True
 LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
@@ -48,19 +47,66 @@ SUBTITLE = 'Created by Sophie Kolston for GISCI 399. Data and code can be found 
 REPO_LINK = 'https://github.com/Yozpoz64/cycling-pollutant-exposure'
 
 
-# get files with extension in a folder
-def get_files(folder, extension):
-    glob_arg = folder + '*.' + extension
-    return glob.glob(glob_arg)
+class StaticMap():
+    
+    def __init__(self, data, fig_size=(20, 20), projection=CRS, 
+                 title='Lockdown Cycling Routes'):
+        # get and set local variables
+        self.data = data
+        self.size = fig_size
+        self.crs = projection
+        
+        # create plot (map)
+        self.fig, self.ax = self.draw_map()
+        
+        # get tracks
+        self.iterrate_data()
+
+        
+    def iterrate_data(self):
+        for file in self.data:
+            shape = self.get_track(file)
+            self.ax.add_geometries(shape, ccrs.PlateCarree(),
+                                   facecolor='none', 
+                                   edgecolor=COLOURS[self.data.index(file)],
+                                   linewidth=2)
+        
+    # extracts trackpoints from a gpx file (the easy way)
+    def get_track(self, file_location):
+        file = fiona.open(file_location, layer='tracks')
+        points = {'type': 'MultiLineString', 
+                  'coordinates': file[0]['geometry']['coordinates']}
+        gpx_shp = shape(points)
+        return gpx_shp
+        
+    # create and format map
+    def draw_map(self):
+        # get basemap
+        request = cimgt.Stamen(style='terrain')
+        
+        # make map
+        fig, ax = plt.subplots(figsize=self.size,
+                               subplot_kw=dict(projection=self.crs))
+        ax.gridlines(draw_labels=True)
+
+        ax.set_extent(EXTENT)
+        ax.add_image(request, 14)
+        ax.set_title('Lockdown Cycling Routes', fontsize=30, pad=20)
+    
+        # get scale
+        scale_args = dict(linestyle='dashed')
+        scale_bar(ax, (0.8, 0.95), 2, plot_kwargs=scale_args)
+        
+        return fig, ax
+    
+    
+
+class WebMap():
+    pass
+    
 
 
-# extracts trackpoints from a gpx file (the easy way)
-def get_track(file_location):
-    file = fiona.open(file_location, layer='tracks')
-    points = {'type': 'MultiLineString', 
-              'coordinates': file[0]['geometry']['coordinates']}
-    gpx_shp = shape(points)
-    return gpx_shp
+
 
 
 # extracts trackpoints from a gpx file (the hard way, for folium)
@@ -146,27 +192,7 @@ def get_pollution_data(timestamps, file_name):
     return plot_html
    
 
-# create and format map
-def get_static_map():
-    # get basemap
-    request = cimgt.Stamen(style='terrain')
-    
-    # make map
-    fig, ax = plt.subplots(figsize=(20, 20),
-                           subplot_kw=dict(projection=CRS))
-    gl = ax.gridlines(draw_labels=True)
-    '''gl.xlabels_top = gl.ylabels_right = False
-    gl.xformatter = LONGITUDE_FORMATTER
-    gl.yformatter = LATITUDE_FORMATTER'''
-    ax.set_extent(EXTENT)
-    ax.add_image(request, 14)
-    ax.set_title('Capstone Cycling Routes', fontsize=30, pad=20)
 
-    # get scale
-    scale_args = dict(linestyle='dashed')
-    scale_bar(ax, (0.8, 0.95), 2, plot_kwargs=scale_args)
-    
-    return fig, ax
 
 
 # checks for autographer gif
@@ -206,6 +232,13 @@ def run_ffmpeg(pic_folder, file_name, video_fps=10, gif_fps=15, gif_scale=320):
                    'split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" '
                    '-loop 0 {}'.format(vid_file, gif_fps, gif_scale, gif_file))
     subprocess.Popen(gif_command, shell=True).wait()
+    
+
+    
+# get files with extension in a folder
+def get_files(folder, extension):
+    glob_arg = folder + '*.' + extension
+    return glob.glob(glob_arg)
 
 
 # run if folder exists
@@ -214,27 +247,22 @@ if os.path.exists(FOLDER):
     
     # makes matplotlib map 
     if MAP_TYPE == 'static':
-        figure, axes = get_static_map()
-        for file in files:
-            shp = get_track(file)
-            axes.add_geometries(shp, ccrs.PlateCarree(),
-                              facecolor='none',
-                              edgecolor=COLOURS[files.index(file)],
-                              linewidth=2)
-            
+        static_map = StaticMap(files)
+    
+        
     # makes folium map
     elif MAP_TYPE == 'dynamic':
         folium_map = folium.Map(location=CENTRE, zoom_start=ZOOM_START, 
                                 tiles='Stamen Terrain', control_scale=True,
                                 height='85%')
-        
+       
         # create title and add to map
         title = ('<h3 align="center" style="font-size:20px"><b>{}</b></h3>'
                  '<h2 align="center" style="font-size:12px">{} <a href="{}">'
                  'GitHub</a></h2>'
                     ).format(TITLE, SUBTITLE, REPO_LINK)
         folium_map.get_root().html.add_child(folium.Element(title))
-    
+ 
         # add full screen button
         folium.plugins.Fullscreen(position='topleft').add_to(folium_map)
         
