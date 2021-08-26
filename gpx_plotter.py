@@ -7,7 +7,7 @@ NOTES:
     -convert this video to .gif using: ffmpeg -i video.mp4 -vf "fps=15,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 output.gif
 
 TO DO:
-    -write code to automate autographer extraction
+    -create plots and include on tooltips
 '''
 # need quite a few for static cartography, as well as local secondary methods
 import matplotlib.pyplot as plt
@@ -26,6 +26,7 @@ import gpxpy
 from folium import plugins
 from folium.features import DivIcon
 import subprocess
+from random import randint
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
@@ -67,6 +68,7 @@ def get_polyline(file_location):
     file = open(file_location, 'r')
     gpx = gpxpy.parse(file)
     points = []
+    times = []
     
     raw_start_time = gpx.tracks[0].segments[0].points[0].time
     raw_end_time = gpx.tracks[0].segments[0].points[-1].time
@@ -75,9 +77,6 @@ def get_polyline(file_location):
                              .seconds / 60 / 60, 2)).split('.')
     length_mins = str((float(length_hours[1]) * 0.01) * 60).split('.')[0]
     length = '{} hour{} {} minutes'.format(length_hours[0], 's' if int(length_hours[0]) > 1 else '', length_mins)
-    
-    start_time = raw_start_time.strftime('%H:%M:%S')
-    end_time = raw_end_time.strftime('%H:%M:%S')
     
     point_count = len(gpx.tracks[0].segments[0].points)
     
@@ -88,18 +87,64 @@ def get_polyline(file_location):
         for segment in track.segments:
             for point in segment.points:
                 points.append(tuple([point.latitude, point.longitude]))
+                times.append(point.time)
 
     track_data = {
         'points': points,
+        'times': times,
         'date': date,
         'length': length,
-        'start': start_time,
-        'end': end_time,
         'point n': point_count}
     
     
     return track_data
 
+
+# gets pollution data (currently empty as I dont have a sensor)
+def get_pollution_data(timestamps, file_name):
+    no_pollution_data = True
+    pollution_folder = 'data/pollution/'
+    gpx_name = os.path.splitext(file_name)[0].split('/')[-1] + '.png'
+    plot_name = pollution_folder + gpx_name
+    
+    if not (os.path.exists(plot_name)):
+
+        # creates fake empty plot with message reading no input data
+        if no_pollution_data:
+            times = []
+            fake_data = []
+            
+            # create fake data and format time
+            for i in range(len(timestamps)):
+                fake_data.append(0)
+                times.append(timestamps[i].replace(tzinfo=None))
+                
+    
+            # create plot
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.scatter(x=times, y=fake_data, marker='')
+            
+            fig.canvas.draw()
+            
+            formatted_labels = []
+            for label in ax.get_xticklabels():
+                new_label = (str(label).split(',')[2].replace(')', '')
+                             .replace("'", '').split(' ')[2])
+                formatted_labels.append(new_label)
+                
+            ax.set_xticklabels(formatted_labels)
+            
+            fig.text(0.1, 0.5, 'No pollution data found', fontsize=50)
+            
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            
+            # save plot
+            plt.savefig(plot_name)
+           
+    plot_html = '<img src="{}" width="300"/>'.format(plot_name)
+    return plot_html
+   
 
 # create and format map
 def get_static_map():
@@ -203,18 +248,31 @@ if os.path.exists(FOLDER):
         
     
         for file in files:
+            # get polyline and information 
             data = get_polyline(file)
             
+            # plot pollution data
+            plot = get_pollution_data(data['times'], file)
+            print(plot)
+            
+            # get start and end times
+            start_time = data['times'][0].strftime('%H:%M:%S')
+            end_time = data['times'][-1].strftime('%H:%M:%S')
+            
+            # get raw coords
             points = data['points']
             
+            # get autograph gif if applicable
             image = get_autograph(file)
             
+            # html string for popup
             popup_string = ('<b>{}</b><br><br><b>Date:</b> {}<br><b>Start '
                             'time:</b> {}<br><b>End time:</b> {}<br><b>'
                             'Ride length:</b> {}<br><b>Total points:</b> {}'
-                            '<br>{}'
-                .format(os.path.basename(file), data['date'], data['start'], 
-                        data['end'], data['length'], data['point n'], image))
+                            '<br>{}<br><br>{}'
+                .format(os.path.basename(file), data['date'], start_time, 
+                        end_time, data['length'], data['point n'], image,
+                        plot))
             
             popup_iframe = folium.IFrame(popup_string, width=400, height=150)
             popup = folium.Popup(popup_iframe)
