@@ -253,7 +253,6 @@ if os.path.exists(FOLDER):
             
             # plot pollution data
             plot = get_pollution_data(data['times'], file)
-            print(plot)
             
             # get start and end times
             start_time = data['times'][0].strftime('%H:%M:%S')
