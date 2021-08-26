@@ -26,7 +26,7 @@ import gpxpy
 from folium import plugins
 from folium.features import DivIcon
 import subprocess
-from random import randint
+import math
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
@@ -291,6 +291,7 @@ if os.path.exists(FOLDER):
                                 tooltip=folium.Html(popup_string, 
                                     script=True).render()).add_to(folium_map)
                   '''
+                  
                 path = folium.plugins.AntPath(points, delay=3000, weight=LINE_WEIGHT,
                     dashArray=(10, 200),
                     color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
