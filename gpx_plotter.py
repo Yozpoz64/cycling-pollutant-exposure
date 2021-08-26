@@ -25,6 +25,7 @@ import folium
 import gpxpy
 from folium import plugins
 from folium.features import DivIcon
+import subprocess
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
@@ -35,7 +36,7 @@ CENTRE = (-36.88, 174.75)
 EXTENT = [-185.363388, -185.103836, -36.996520, -36.819180] # http://bboxfinder.com/
 CRS = ccrs.PlateCarree()
 FOLDER = 'data/gpxs/'
-COLOURS = ['red', 'blue', 'green']
+COLOURS = ['red', 'blue', 'green', 'pink', 'orange']
 MAP_TYPE = 'dynamic'
 HOVER = True
 LINE_WEIGHT = 5
@@ -133,7 +134,33 @@ def get_autograph(file_location):
         return '<img src="{}"/>'.format(image_path)
 
     else:
-        return 'No Autograph found'
+        # check for folder of photos
+        autograph_folder = 'data/autographer/autograph_{}'.format(name)
+        if os.path.isdir(autograph_folder):
+            # get video, gif
+            run_ffmpeg(autograph_folder, name)
+            return '<img src="{}"/>'.format(image_path)
+        else:
+            return 'No Autograph images found.'
+    
+
+# calls ffmpeg with arguments
+def run_ffmpeg(pic_folder, file_name, video_fps=10, gif_fps=15, gif_scale=320):
+    # it does not really have to have both a video and gif, I just want to see both
+    
+    # create video
+    vid_file = '{}/{}.mp4'.format(pic_folder, file_name)
+    vid_command = ['ffmpeg', '-framerate', str(video_fps), '-pattern_type', 'glob',
+                   '-i', '{}/*.JPG'.format(pic_folder), vid_file]
+
+    subprocess.Popen(vid_command).wait()
+
+    # create gif
+    gif_file = 'data/autographer/{}.gif'.format(file_name)
+    gif_command = ('ffmpeg -i {} -vf "fps={},scale={}:-1:flags=lanczos,'
+                   'split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" '
+                   '-loop 0 {}'.format(vid_file, gif_fps, gif_scale, gif_file))
+    subprocess.Popen(gif_command, shell=True).wait()
 
 
 # run if folder exists
