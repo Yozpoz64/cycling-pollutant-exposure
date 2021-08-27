@@ -159,6 +159,7 @@ class WebMap():
                 
         return round((sum(all_distances) / 1000), 2)
         
+    
     # organizes all of the metadata required for mapping
     def map_data(self):
         for file in self.data:
@@ -168,12 +169,7 @@ class WebMap():
             # get raw coords
             points = track_data['points']
             
-            # calculate distance
-            distance = self.calc_distance(points)
-            
             # calculate speed
-            time_seconds = track_data['times'][-1] - track_data['times'][0]
-            print(time_seconds)
             
             # get autograph gif if applicable
             image = self.get_autograph(file)
@@ -184,17 +180,17 @@ class WebMap():
             # html string for popup
             popup_string = ('<b>{}</b><br><br><b>Date:</b> {}<br><b>'
                             'Ride length:</b> {}<br><b>Ride distance:</b> {}km'
-                            '<br><b>Total GPS points:</b> {}<br>{}<br><br>{}'
+                            '<br><b>Average speed:</b> {}km/h<br><b>Total GPS '
+                            'points:</b> {}<br>{}<br><br>{}'
                 .format(os.path.basename(file), track_data['date'], 
-                        track_data['length'], distance, 
-                        track_data['point n'], image, plot))
+                        track_data['length'], track_data['distance'], 
+                        track_data['speed'], track_data['point n'], image, plot))
             
             popup_iframe = folium.IFrame(popup_string, width=400, height=150)
             popup = folium.Popup(popup_iframe)
                     
             # choose between hover or click for item. click is better for html
             if not self.hover:
-
                 folium.PolyLine(points, color=COLOURS[files.index(file)], 
                                 weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
                                 popup=popup).add_to(self.folium_map)
@@ -223,13 +219,15 @@ class WebMap():
         raw_end_time = gpx.tracks[0].segments[0].points[-1].time
         
         length_hours = str(round((raw_end_time - raw_start_time)
-                                 .seconds / 60 / 60, 2)).split('.')
-        length_mins = str((float(length_hours[1]) * 0.01) * 60).split('.')[0]
+                                 .seconds / 60 / 60, 2))
+        length_mins = str((float(length_hours.split('.')[1]) * 0.01) 
+                          * 60).split('.')[0]
         length = '{} hour{} {} minutes'.format(length_hours[0], 's' if int(length_hours[0]) > 1 else '', length_mins)
         
         point_count = len(gpx.tracks[0].segments[0].points)
         
         date = raw_start_time.strftime('%A %-d %B (%d-%m-%Y)')
+
         
         for track in gpx.tracks:
             for segment in track.segments:
@@ -237,12 +235,18 @@ class WebMap():
                     points.append(tuple([point.latitude, point.longitude]))
                     times.append(point.time)
     
+        distance = self.calc_distance(points)
+      
+        speed = round(distance / float(length_hours), 2)
+        
         track_data = {
             'points': points,
             'times': times,
             'date': date,
             'length': length,
-            'point n': point_count}
+            'point n': point_count,
+            'distance': distance,
+            'speed': speed}
         
         return track_data
 
