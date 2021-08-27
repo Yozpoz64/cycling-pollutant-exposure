@@ -39,8 +39,6 @@ EXTENT = [-185.36, -185.10, -36.99, -36.82] # http://bboxfinder.com/
 CRS = ccrs.PlateCarree()
 FOLDER = 'data/gpxs/'
 COLOURS = ['red', 'blue', 'green', 'pink', 'orange']
-MAP_TYPE = 'dynamic' # static or dynamic
-HOVER = True
 LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
 ZOOM_START = 12
@@ -50,6 +48,8 @@ REPO_LINK = 'https://github.com/Yozpoz64/cycling-pollutant-exposure'
 
 IMAGE_PATH = 'data/autographer/'
 POLLUTION_PATH = 'data/pollution/'
+
+INDEX_NAME = 'index.html'
 
 
 class StaticMap():
@@ -114,7 +114,7 @@ class WebMap():
     
     def __init__(self, data, automate, zoom_start=ZOOM_START, centre=CENTRE, 
                  map_tiles='Stamen Terrain', title=TITLE, subtitle=SUBTITLE,
-                 repo_link=REPO_LINK, ffmpeg_loc='ffmpeg', hover=HOVER,
+                 repo_link=REPO_LINK, ffmpeg_loc='ffmpeg',
                  image_path=IMAGE_PATH, video_fps=10, gif_fps=15,
                  gif_scale=320, pollution_path=POLLUTION_PATH):
         
@@ -125,7 +125,6 @@ class WebMap():
         self.title = title
         self.subtitle = subtitle
         self.repo = repo_link
-        self.hover = hover
         
         # define data variables
         self.data = data
@@ -143,7 +142,8 @@ class WebMap():
         
         if automate:
             # build map
-            self.draw_map()
+            self.simple_map = self.draw_map()
+            self.advanced_map = self.draw_map()
             
             # itterate through data and map. calls other functions
             self.map_data()
@@ -184,26 +184,28 @@ class WebMap():
                         track_data['length'], track_data['distance'], 
                         track_data['speed'], track_data['point n'], image, plot))
             
+            '''
             popup_iframe = folium.IFrame(popup_string, width=400, height=200)
             popup = folium.Popup(popup_iframe)
-                    
-            # choose between hover or click for item. click is better for html
-            if not self.hover:
-                folium.PolyLine(points, color=COLOURS[files.index(file)], 
-                                weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
-                                popup=folium.Html(popup_string, script=True).render()).add_to(self.folium_map)
+            '''
+            
+            # add polyline to simple map
+            folium.PolyLine(points, color=COLOURS[files.index(file)], 
+                            weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
+                            popup=folium.Html(popup_string, script=True)
+                            .render()).add_to(self.simple_map)
         
 
-            if self.hover:
-                path = folium.plugins.AntPath(points, delay=3000, weight=LINE_WEIGHT,
-                    dashArray=(10, 200),
-                    color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
-                    tooltip=folium.Html(popup_string, script=True).render()
-                    ).add_to(self.folium_map)
+            # add antpath to advanced map
+            path = folium.plugins.AntPath(points, delay=3000, weight=LINE_WEIGHT,
+                dashArray=(10, 200),
+                color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
+                tooltip=folium.Html(popup_string, script=True).render()
+                ).add_to(self.advanced_map)
                 
-                path.options.update(dashArray=[1, 12],
-                                    hardwareAcceleration=True,
-                                    pulseColor='#3f4145')
+            path.options.update(dashArray=[1, 12],
+                                hardwareAcceleration=True,
+                                pulseColor='#3f4145')
             
             
      # extracts trackpoints from a gpx file (the hard way, for folium)
@@ -250,7 +252,7 @@ class WebMap():
 
 
     def draw_map(self):
-        self.folium_map = folium.Map(location=self.centre, zoom_start=self.zoom, 
+        folium_map = folium.Map(location=self.centre, zoom_start=self.zoom, 
                                 tiles=self.tiles, control_scale=True,
                                 height='85%')
        
@@ -259,18 +261,20 @@ class WebMap():
                  '<h2 align="center" style="font-size:12px">{} <a href="{}">'
                  'GitHub</a></h2>'
                     ).format(self.title, self.subtitle, self.repo)
-        self.folium_map.get_root().html.add_child(folium.Element(title))
+        folium_map.get_root().html.add_child(folium.Element(title))
  
         # add full screen button
-        folium.plugins.Fullscreen(position='topleft').add_to(self.folium_map)
+        folium.plugins.Fullscreen(position='topleft').add_to(folium_map)
         
         # add mouse position
-        folium.plugins.MousePosition(position='topright').add_to(self.folium_map)
+        folium.plugins.MousePosition(position='topright').add_to(folium_map)
         
         # add measure tool
         folium.plugins.MeasureControl(primary_length_unit='meters',
             secondary_length_unit='kilometers', primary_area_unit='sqmeters',
-            secondary_area_unit ='sqkilometers').add_to(self.folium_map)
+            secondary_area_unit ='sqkilometers').add_to(folium_map)
+        
+        return folium_map
         
     
     # gets pollution data (currently empty as I dont have a sensor)
@@ -360,42 +364,41 @@ class WebMap():
         
         
     # saves map
-    def save_map(self):
-        if not self.hover:
-            # save file 
-            self.filename = 'webmap_simple.html'
-            self.folium_map.save(self.filename)
-            
-            # add button to move to hover version
-            file = open(self.filename, 'a')
-            button_html = """<center style="margin-top: 1cm;">
-                    <button onclick="window.location.href='webmap_advanced.html'
-                    ">Go to full site (more CPU intensive)</button>
-                    </center>"""
-            file.write(button_html)
-            
+    def save_map(self, index='advanced'):
+        # choose name based on index. has to be index.html for github pages
+        self.index = index
+        if self.index == 'advanced':
+            self.advanced_filename = 'index.html'
+            self.simple_filename = 'webmap_simple.html'
         else:
-            # save file
-            self.filename = 'webmap_advanced.html'
-            self.folium_map.save(self.filename)
+            self.advanced_filename = 'webmap_advanced.html'
+            self.simple_filename = 'index.html'
+        
+        # save simple map
+        self.simple_map.save(self.simple_filename)
+        file = open(self.simple_filename, 'a')
+        button_html = """<center style="margin-top: 1cm;">
+            <button onclick="window.location.href='{}'
+            ">Go to full site (more CPU intensive)</button>
+            </center>""".format(self.advanced_filename)
+        file.write(button_html)
+        
+        # save advanced map
+        self.advanced_map.save(self.advanced_filename)
+        file = open(self.advanced_filename, 'a')
+        button_html = """<center style="margin-top: 1cm;">
+                <button onclick="window.location.href='{}'
+                ">Go to basic site (less CPU intensive)</button>
+                </center>""".format(self.simple_filename)
+        file.write(button_html)
             
-            # add button to move to click version
-               # add button to move to different version
-            file = open(self.filename, 'a')
-            button_html = """<center style="margin-top: 1cm;">
-                    <button onclick="window.location.href='webmap_simple.html'
-                    ">Go to simple version (less CPU intensive)</button>
-                    </center>"""
-            file.write(button_html)
-    
-    
+        
     # opens map in browser
     def open_map(self):
-        webbrowser.open(self.filename)
+        webbrowser.open('index.html')
         
-    
-    
- 
+
+
 # get files with extension in a folder
 def get_files(folder, extension):
     glob_arg = folder + '*.' + extension
@@ -406,20 +409,12 @@ def get_files(folder, extension):
 if os.path.exists(FOLDER):
     files = get_files(FOLDER, 'gpx')
     
-    # makes matplotlib map 
-    if MAP_TYPE == 'static':
-        static_map = StaticMap(files, automate=True)
+    #static_map = StaticMap(files, automate=True)
+   
+    dynamic_map = WebMap(files, automate=True)
+    dynamic_map.save_map()
     
-        
-    # makes folium map
-    elif MAP_TYPE == 'dynamic':
-        webmap_simple = WebMap(files, automate=True, hover=False)
-        webmap_simple.save_map()
-        
-        webmap_advanced = WebMap(files, automate=True, hover=True)
-        webmap_advanced.save_map()
-        
-        webmap_advanced.open_map()
+    dynamic_map.open_map()
             
       
 else:
