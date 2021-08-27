@@ -26,6 +26,8 @@ from folium import plugins
 from folium.features import DivIcon
 import subprocess
 import math
+import haversine as hs
+from haversine import Unit
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
@@ -145,19 +147,33 @@ class WebMap():
             
             # itterate through data and map. calls other functions
             self.map_data()
-
-
+            
+            
+    # get distance ridden 
+    def calc_distance(self, points):
+        all_distances = []
+        for i in range(len(points)):
+            if i != len(points) - 1:
+                dist = hs.haversine(points[i], points[i + 1], unit=Unit.METERS)
+                all_distances.append(dist)
+                
+        return round((sum(all_distances) / 1000), 2)
+        
+    # organizes all of the metadata required for mapping
     def map_data(self):
         for file in self.data:
             # get polyline and information 
             track_data = self.get_polyline(file)
             
-            # get start and end times
-            start_time = track_data['times'][0].strftime('%H:%M:%S')
-            end_time = track_data['times'][-1].strftime('%H:%M:%S')
-            
             # get raw coords
             points = track_data['points']
+            
+            # calculate distance
+            distance = self.calc_distance(points)
+            
+            # calculate speed
+            time_seconds = track_data['times'][-1] - track_data['times'][0]
+            print(time_seconds)
             
             # get autograph gif if applicable
             image = self.get_autograph(file)
@@ -166,13 +182,12 @@ class WebMap():
             plot = self.get_pollution_data(track_data['times'], file)
             
             # html string for popup
-            popup_string = ('<b>{}</b><br><br><b>Date:</b> {}<br><b>Start '
-                            'time:</b> {}<br><b>End time:</b> {}<br><b>'
-                            'Ride length:</b> {}<br><b>Total points:</b> {}'
-                            '<br>{}<br><br>{}'
-                .format(os.path.basename(file), track_data['date'], start_time, 
-                        end_time, track_data['length'], track_data['point n'], 
-                        image, plot))
+            popup_string = ('<b>{}</b><br><br><b>Date:</b> {}<br><b>'
+                            'Ride length:</b> {}<br><b>Ride distance:</b> {}km'
+                            '<br><b>Total GPS points:</b> {}<br>{}<br><br>{}'
+                .format(os.path.basename(file), track_data['date'], 
+                        track_data['length'], distance, 
+                        track_data['point n'], image, plot))
             
             popup_iframe = folium.IFrame(popup_string, width=400, height=150)
             popup = folium.Popup(popup_iframe)
