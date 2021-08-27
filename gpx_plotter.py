@@ -169,8 +169,6 @@ class WebMap():
             # get raw coords
             points = track_data['points']
             
-            # calculate speed
-            
             # get autograph gif if applicable
             image = self.get_autograph(file)
 
@@ -186,14 +184,14 @@ class WebMap():
                         track_data['length'], track_data['distance'], 
                         track_data['speed'], track_data['point n'], image, plot))
             
-            popup_iframe = folium.IFrame(popup_string, width=400, height=150)
+            popup_iframe = folium.IFrame(popup_string, width=400, height=200)
             popup = folium.Popup(popup_iframe)
                     
             # choose between hover or click for item. click is better for html
             if not self.hover:
                 folium.PolyLine(points, color=COLOURS[files.index(file)], 
                                 weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
-                                popup=popup).add_to(self.folium_map)
+                                popup=folium.Html(popup_string, script=True).render()).add_to(self.folium_map)
         
 
             if self.hover:
@@ -254,7 +252,7 @@ class WebMap():
     def draw_map(self):
         self.folium_map = folium.Map(location=self.centre, zoom_start=self.zoom, 
                                 tiles=self.tiles, control_scale=True,
-                                height='100%')
+                                height='85%')
        
         # create title and add to map
         title = ('<h3 align="center" style="font-size:20px"><b>{}</b></h3>'
@@ -362,9 +360,33 @@ class WebMap():
         
         
     # saves map
-    def save_map(self, filename='index.html'):
-        self.filename = filename
-        self.folium_map.save(self.filename)
+    def save_map(self):
+        if not self.hover:
+            # save file 
+            self.filename = 'webmap_simple.html'
+            self.folium_map.save(self.filename)
+            
+            # add button to move to hover version
+            file = open(self.filename, 'a')
+            button_html = """<center style="margin-top: 1cm;">
+                    <button onclick="window.location.href='webmap_advanced.html'
+                    ">Go to full site (more CPU intensive)</button>
+                    </center>"""
+            file.write(button_html)
+            
+        else:
+            # save file
+            self.filename = 'webmap_advanced.html'
+            self.folium_map.save(self.filename)
+            
+            # add button to move to click version
+               # add button to move to different version
+            file = open(self.filename, 'a')
+            button_html = """<center style="margin-top: 1cm;">
+                    <button onclick="window.location.href='webmap_simple.html'
+                    ">Go to simple version (less CPU intensive)</button>
+                    </center>"""
+            file.write(button_html)
     
     
     # opens map in browser
@@ -391,9 +413,13 @@ if os.path.exists(FOLDER):
         
     # makes folium map
     elif MAP_TYPE == 'dynamic':
-        web_map = WebMap(files, automate=True)
-        web_map.save_map()
-        web_map.open_map()
+        webmap_simple = WebMap(files, automate=True, hover=False)
+        webmap_simple.save_map()
+        
+        webmap_advanced = WebMap(files, automate=True, hover=True)
+        webmap_advanced.save_map()
+        
+        webmap_advanced.open_map()
             
       
 else:
