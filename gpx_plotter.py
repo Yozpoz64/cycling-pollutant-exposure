@@ -195,9 +195,10 @@ class WebMap():
                             popup=folium.Html(popup_string, script=True)
                             .render()).add_to(self.simple_map)
         
-
+            # set antpath delay to be proportional to the rider speed
+            antpath_speed = 4000 - (track_data['speed'] * 100)
             # add antpath to advanced map
-            path = folium.plugins.AntPath(points, delay=3000, weight=LINE_WEIGHT,
+            path = folium.plugins.AntPath(points, delay=antpath_speed, weight=LINE_WEIGHT,
                 dashArray=(10, 200),
                 color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
                 tooltip=folium.Html(popup_string, script=True).render()
