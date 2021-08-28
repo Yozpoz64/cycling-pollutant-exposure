@@ -162,12 +162,18 @@ class WebMap():
     
     # organizes all of the metadata required for mapping
     def map_data(self):
+        
+        self.total_distance = 0
+        
         for file in self.data:
             # get polyline and information 
             track_data = self.get_polyline(file)
             
             # get raw coords
             points = track_data['points']
+            
+            # add distance to total
+            self.total_distance += track_data['distance']
             
             # get autograph gif if applicable
             image = self.get_autograph(file)
@@ -207,6 +213,8 @@ class WebMap():
             path.options.update(dashArray=[1, 12],
                                 hardwareAcceleration=True,
                                 pulseColor='#3f4145')
+            
+        self.total_distance = round(self.total_distance, 2)
             
             
      # extracts trackpoints from a gpx file (the hard way, for folium)
@@ -378,19 +386,21 @@ class WebMap():
         # save simple map
         self.simple_map.save(self.simple_filename)
         file = open(self.simple_filename, 'a')
-        button_html = """<center style="margin-top: 1cm;">
+        button_html = """<center style="margin-top: 0.5cm;">
+            Total cycling distance: {}km<br><br>
             <button onclick="window.location.href='{}'
             ">Go to full site (more CPU intensive)</button>
-            </center>""".format(self.advanced_filename)
+            </center>""".format(self.total_distance, self.advanced_filename)
         file.write(button_html)
         
         # save advanced map
         self.advanced_map.save(self.advanced_filename)
         file = open(self.advanced_filename, 'a')
-        button_html = """<center style="margin-top: 1cm;">
+        button_html = """<center style="margin-top: 0.5cm;">
+                Total cycling distance: {}km<br><br>
                 <button onclick="window.location.href='{}'
                 ">Go to basic site (less CPU intensive)</button>
-                </center>""".format(self.simple_filename)
+                </center>""".format(self.total_distance, self.simple_filename)
         file.write(button_html)
             
         
