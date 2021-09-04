@@ -28,6 +28,7 @@ import subprocess
 import math
 import haversine as hs
 from haversine import Unit
+import random
 
 # set cwd. having weird issues with conda this should fix
 os.chdir('/home/sophie/GitHub/cycling-pollutant-exposure/')
@@ -38,7 +39,6 @@ CENTRE = (-36.88, 174.75)
 EXTENT = [-185.36, -185.10, -36.99, -36.82] # http://bboxfinder.com/
 CRS = ccrs.PlateCarree()
 FOLDER = 'data/gpxs/'
-COLOURS = ['purple', 'red', 'blue', 'green', 'pink', 'orange', 'black', 'white']
 LINE_WEIGHT = 5
 LINE_OPACITY = 0.5
 ZOOM_START = 12
@@ -67,17 +67,24 @@ class StaticMap():
             
             # get tracks
             self.iterrate_data()
+            
+            
+    # gets random colours for the tracks on the map
+    def get_random_colours(self, num_colours):
+        return ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+             for i in range(num_colours)]
 
     
     # iterates over data, adding geometries to map
     def iterrate_data(self):
+        self.colours = self.get_random_colours(len(self.data))
         for file in self.data:
             shape = self.get_track(file)
             self.ax.add_geometries(shape, ccrs.PlateCarree(),
                                    facecolor='none', 
-                                   edgecolor=COLOURS[self.data.index(file)],
+                                   edgecolor=self.colours[self.data.index(file)],
                                    linewidth=2)
-        
+
         
     # extracts trackpoints from a gpx file (the easy way)
     def get_track(self, file_location):
@@ -158,12 +165,20 @@ class WebMap():
                 all_distances.append(dist)
                 
         return round((sum(all_distances) / 1000), 2)
+    
+    
+    # gets random colours for the tracks on the map
+    def get_random_colours(self, num_colours):
+        return ["#"+''.join([random.choice('0123456789ABCDEF') for j in range(6)])
+             for i in range(num_colours)]
         
     
     # organizes all of the metadata required for mapping
     def map_data(self):
         
         self.total_distance = 0
+        
+        self.colours = self.get_random_colours(len(self.data))
         
         for file in self.data:
             # get polyline and information 
@@ -196,7 +211,7 @@ class WebMap():
             '''
             
             # add polyline to simple map
-            folium.PolyLine(points, color=COLOURS[files.index(file)], 
+            folium.PolyLine(points, color=self.colours[files.index(file)], 
                             weight=LINE_WEIGHT, opacity=LINE_OPACITY, 
                             popup=folium.Html(popup_string, script=True)
                             .render()).add_to(self.simple_map)
@@ -206,7 +221,7 @@ class WebMap():
             # add antpath to advanced map
             path = folium.plugins.AntPath(points, delay=antpath_speed, weight=LINE_WEIGHT,
                 dashArray=(10, 200),
-                color=COLOURS[files.index(file)], opacity=LINE_OPACITY,
+                color=self.colours[files.index(file)], opacity=LINE_OPACITY,
                 tooltip=folium.Html(popup_string, script=True).render()
                 ).add_to(self.advanced_map)
                 
@@ -423,7 +438,7 @@ if os.path.exists(FOLDER):
     #static_map = StaticMap(files, automate=True)
    
     dynamic_map = WebMap(files, automate=True)
-    dynamic_map.save_map()
+    dynamic_map.save_map(index='simple')
     
     dynamic_map.open_map()
             
