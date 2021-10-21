@@ -42,9 +42,6 @@ def plot_no2():
     
     fig, ax = plt.subplots(figsize=(20, 20))
  
-    
-
-    
     vmin = 10
     vmax = 45
     
@@ -59,11 +56,9 @@ def plot_no2():
             
     lines = [Line2D([0], [0], color='red', lw=3)]
     labels = ['Track A']
-    for colour in colours:
-        lines.append(Line2D([0], [0], color=colours[colour], lw=3))
-        labels.append(colour)
+
         
-    fig.legend(lines, labels, loc='center right', prop={'size': 19})
+    ax.legend(lines, labels, loc='lower left', prop={'size': 20})
     
     
     # set labels
@@ -76,7 +71,7 @@ def plot_no2():
     cbar = ax.figure.colorbar(
                 mpl.cm.ScalarMappable(norm=norm, cmap='viridis_r'),
                 ax=ax, pad=0.05, fraction=0.03,
-                label='NO$_2$ (\u00B5g / m$^2$')
+                label='NO$_2$ (\u00B5g / m$^3$')
     
     # add scale bar
     scalebar = ScaleBar(70000)
